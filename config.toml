@@ -1,0 +1,79 @@
+[data]
+root = "data"
+feeds = ["yellow", "green", "fhv", "fhvhv"]
+start_month = "2019-01"
+end_month = "2021-07"
+release_base = "https://github.com/DataTalksClub/nyc-tlc-data/releases/download"
+zone_lookup_url = "https://raw.githubusercontent.com/fivethirtyeight/uber-tlc-foil-response/master/uber-trip-data/taxi-zone-lookup.csv"
+
+[spark]
+master = "local[*]"
+app_name = "spillway"
+driver_memory = "4g"
+executor_memory = "2g"
+executor_cores = 1
+shuffle_partitions = 48
+adaptive = true
+adaptive_skew_join = true
+broadcast_threshold_mb = 32
+target_file_mb = 128
+timezone = "UTC"
+local_dir = ""
+log_level = "WARN"
+ui_enabled = true
+
+[ingest]
+workers = 4
+timeout_seconds = 300
+retries = 3
+chunk_kb = 512
+verify_header = true
+
+[bronze]
+timestamp_format = "yyyy-MM-dd HH:mm:ss"
+rows_per_file = 4000000
+keep_corrupt_rows = true
+
+[silver]
+min_trip_seconds = 30
+max_trip_seconds = 21600
+max_trip_miles = 200.0
+max_speed_mph = 90.0
+max_fare = 2000.0
+dedup = true
+
+[gold]
+top_pairs = 200
+min_zone_trips = 500
+
+[quality]
+max_corrupt_rate = 0.001
+max_null_pickup_rate = 0.001
+max_unknown_zone_rate = 0.35
+max_out_of_window_rate = 0.02
+min_rows_per_month = 1000
+fail_on = "error"
+
+[tuning]
+sample_feed = "yellow"
+sample_months = ["2019-01", "2019-02", "2019-03"]
+skew_feed = "fhvhv"
+skew_months = ["2021-01"]
+experiments = ["gzip_parallelism", "schema_inference", "join_strategy", "skew_salting", "adaptive_execution", "partition_pruning", "file_compaction"]
+salt_buckets = 16
+repeat = 1
+
+[streaming]
+files_per_batch = 2
+trigger_seconds = 0
+watermark_minutes = 30
+window_minutes = 15
+producer_files = 12
+producer_rows = 400000
+late_rows = 20000
+late_offset_hours = 8
+
+[iceberg]
+catalog_name = "spillway"
+namespace = "gold"
+tables = ["od_month", "zone_month", "hourly_demand", "airport_flow", "feed_share", "zone_pair"]
