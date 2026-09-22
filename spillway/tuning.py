@@ -111,14 +111,32 @@ def schema_inference(config: Config, spark: SparkSession, probe: Probe) -> list[
         return []
     uris = [path.resolve().as_uri() for path in paths]
     out = []
-    explicit = (
-        spark.read.options(**bronze.READ_OPTIONS).schema(variant.read_schema()).csv(uris)
+
+    def explicit():
+        return (
+            spark.read.options(**bronze.READ_OPTIONS)
+            .schema(variant.read_schema())
+            .csv(uris)
+            .count()
+        )
+
+    def inferred():
+        return spark.read.options(header="true", inferSchema="true").csv(uris).count()
+
+    metrics, rows = measure(probe, explicit)
+    out.append(
+        Measurement("schema_inference", "explicit_schema", rows, metrics, "one pass over the files")
     )
-    metrics, rows = measure(probe, explicit.count)
-    out.append(Measurement("schema_inference", "explicit_schema", rows, metrics, ""))
-    inferred = spark.read.options(header="true", inferSchema="true").csv(uris)
-    metrics, rows = measure(probe, inferred.count)
-    out.append(Measurement("schema_inference", "inferred_schema", rows, metrics, ""))
+    metrics, rows = measure(probe, inferred)
+    out.append(
+        Measurement(
+            "schema_inference",
+            "inferred_schema",
+            rows,
+            metrics,
+            "Spark reads the files once to guess the types, then again to count",
+        )
+    )
     return out
 
 
@@ -171,19 +189,54 @@ def skew_salting(config: Config, spark: SparkSession, probe: Probe) -> list[Meas
         silver.read(spark, config)
         .filter(F.col("feed") == config.tuning.skew_feed)
         .filter(F.col("file_month").isin(list(config.tuning.skew_months)))
-        .select("pu_location_id", "trip_seconds")
+        .select(
+            F.coalesce(F.col("license_num"), F.col("base_num"), F.lit("unknown")).alias("hot_key"),
+            "pickup_ts",
+            "dropoff_ts",
+            "pu_location_id",
+            "do_location_id",
+            "trip_seconds",
+            "trip_miles",
+            "base_num",
+        )
+    ).cache()
+    counts = (
+        trips.groupBy("hot_key").agg(F.count(F.lit(1)).alias("trips")).orderBy(F.desc("trips"))
+    ).collect()
+    total = sum(row["trips"] for row in counts)
+    if not total:
+        trips.unpersist()
+        return []
+    share = counts[0]["trips"] / total
+    dimension = spark.createDataFrame(
+        [(row["hot_key"], f"operator {index}") for index, row in enumerate(counts)],
+        "hot_key string, operator string",
     )
-    zones = silver.zones(spark, config).select("location_id", "borough")
     buckets = config.tuning.salt_buckets
     out = []
+
     def direct():
         return (
-            trips.join(zones, trips.pu_location_id == zones.location_id, "left")
-            .groupBy("borough")
-            .agg(F.count(F.lit(1)).alias("trips"))
+            trips.join(dimension, "hot_key", "left")
+            .groupBy("operator")
+            .agg(F.count(F.lit(1)).alias("trips"), F.sum("trip_seconds").alias("seconds"))
             .collect()
         )
 
+    salted_left = trips.withColumn("salt", F.floor(F.rand(13) * buckets).cast("int"))
+    salted_right = dimension.crossJoin(
+        spark.range(buckets).select(F.col("id").cast("int").alias("salt"))
+    )
+
+    def salted():
+        return (
+            salted_left.join(salted_right, ["hot_key", "salt"], "left")
+            .groupBy("operator")
+            .agg(F.count(F.lit(1)).alias("trips"), F.sum("trip_seconds").alias("seconds"))
+            .collect()
+        )
+
+    detail = f"{counts[0]['hot_key']} holds {share:.1%} of {total} trips"
     with conf(spark, {BROADCAST: "-1", AQE: "false"}):
         metrics, rows = measure(probe, direct)
         out.append(
@@ -192,33 +245,9 @@ def skew_salting(config: Config, spark: SparkSession, probe: Probe) -> list[Meas
                 "direct_join",
                 sum(row["trips"] for row in rows),
                 metrics,
-                "null and hot keys land on one task",
+                detail,
             )
         )
-        salted_left = trips.withColumn(
-            "join_key",
-            F.when(
-                F.col("pu_location_id").isNull(),
-                -F.floor(F.rand(7) * buckets).cast("int") - 1,
-            ).otherwise(F.col("pu_location_id")),
-        )
-        salted_right = zones.union(
-            spark.range(1, buckets + 1).select(
-                (-F.col("id")).cast("int").alias("location_id"),
-                F.lit(None).cast("string").alias("borough"),
-            )
-        )
-
-        def salted():
-            return (
-                salted_left.join(
-                    salted_right, salted_left.join_key == salted_right.location_id, "left"
-                )
-                .groupBy("borough")
-                .agg(F.count(F.lit(1)).alias("trips"))
-                .collect()
-            )
-
         metrics, rows = measure(probe, salted)
         out.append(
             Measurement(
@@ -226,9 +255,24 @@ def skew_salting(config: Config, spark: SparkSession, probe: Probe) -> list[Meas
                 "salted_join",
                 sum(row["trips"] for row in rows),
                 metrics,
-                f"null keys spread over {buckets} buckets",
+                f"the hot key is spread over {buckets} buckets",
             )
         )
+    with conf(
+        spark,
+        {BROADCAST: "-1", AQE: "true", "spark.sql.adaptive.skewJoin.enabled": "true"},
+    ):
+        metrics, rows = measure(probe, direct)
+        out.append(
+            Measurement(
+                "skew_salting",
+                "adaptive_skew_join",
+                sum(row["trips"] for row in rows),
+                metrics,
+                "Spark splits the hot partition on its own",
+            )
+        )
+    trips.unpersist()
     return out
 
 

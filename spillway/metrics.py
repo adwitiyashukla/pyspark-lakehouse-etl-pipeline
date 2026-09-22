@@ -29,6 +29,13 @@ class StageMetrics:
     detail: dict = field(default_factory=dict)
 
 
+def _weight(stage: dict) -> tuple[int, int]:
+    return (
+        int(stage.get("shuffleReadBytes", 0) or 0),
+        int(stage.get("numCompleteTasks", 0) or 0),
+    )
+
+
 class Probe:
     def __init__(self, spark: SparkSession):
         self.base = spark.sparkContext.uiWebUrl
@@ -77,7 +84,7 @@ class Probe:
             if (item["stageId"], item["attemptId"]) not in before
             and item.get("status") == "COMPLETE"
         ]
-        biggest = None
+        widest = None
         for item in fresh:
             metrics.stages += 1
             metrics.tasks += int(item.get("numCompleteTasks", 0) or 0)
@@ -88,15 +95,17 @@ class Probe:
             metrics.spill_disk_bytes += int(item.get("diskBytesSpilled", 0) or 0)
             metrics.input_bytes += int(item.get("inputBytes", 0) or 0)
             metrics.output_bytes += int(item.get("outputBytes", 0) or 0)
-            complete = item.get("numCompleteTasks", 0)
-            if biggest is None or complete > biggest.get("numCompleteTasks", 0):
-                biggest = item
-        if biggest is not None:
-            median, maximum = self._task_quantiles(biggest["stageId"], biggest["attemptId"])
+            if widest is None or _weight(item) > _weight(widest):
+                widest = item
+        if widest is not None:
+            median, maximum = self._task_quantiles(widest["stageId"], widest["attemptId"])
             metrics.median_task_ms = median
             metrics.max_task_ms = maximum
-            metrics.detail["widest_stage"] = biggest.get("name", "")
-            metrics.detail["widest_stage_tasks"] = int(biggest.get("numCompleteTasks", 0) or 0)
+            metrics.detail["widest_stage"] = widest.get("name", "")
+            metrics.detail["widest_stage_tasks"] = int(widest.get("numCompleteTasks", 0) or 0)
+            metrics.detail["widest_stage_shuffle_read"] = int(
+                widest.get("shuffleReadBytes", 0) or 0
+            )
         return metrics
 
 

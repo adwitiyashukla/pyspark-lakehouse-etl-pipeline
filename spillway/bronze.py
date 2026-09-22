@@ -157,10 +157,11 @@ def build(
             summary["rows"],
         )
     with state.session(config.data.state_db) as conn:
+        totals = state.totals(conn)
         state.record_layer(
             conn,
             layer="bronze",
-            rows=summary["rows"],
+            rows=totals["bronze_rows"],
             files=sum(
                 _partition_files(target, feed, month)[0]
                 for feed in config.data.feeds
@@ -168,7 +169,10 @@ def build(
             ),
             bytes=sum(item.stat().st_size for item in target.rglob("*.parquet")),
             seconds=round(summary["seconds"], 3),
-            detail=f"{summary['corrupt']} corrupt rows",
+            detail=(
+                f"{totals['bronze_corrupt_rows']} corrupt rows, "
+                f"{summary['rows']} rows in the last build"
+            ),
         )
     LOG.info(
         "bronze done: %d partitions, %d rows, %d corrupt, %d outside their file month",
