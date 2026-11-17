@@ -235,6 +235,7 @@ def build(config: Config, spark: SparkSession, months: tuple[str, ...] | None = 
     dropped = spark.read.parquet(str(config.data.quarantine / "silver")).count()
     size = sum(item.stat().st_size for item in target.rglob("*.parquet"))
     files = len(list(target.rglob("*.parquet")))
+    rejected_root = config.data.quarantine / "silver"
     with state.session(config.data.state_db) as conn:
         state.record_layer(
             conn,
@@ -244,6 +245,15 @@ def build(config: Config, spark: SparkSession, months: tuple[str, ...] | None = 
             bytes=size,
             seconds=round(elapsed, 3),
             detail=f"{dropped} quarantined",
+        )
+        state.record_layer(
+            conn,
+            layer="quarantine",
+            rows=dropped,
+            files=len(list(rejected_root.rglob("*.parquet"))),
+            bytes=sum(item.stat().st_size for item in rejected_root.rglob("*.parquet")),
+            seconds=round(elapsed, 3),
+            detail="trips rejected by silver rules",
         )
     LOG.info(
         "silver done: %d trips kept, %d quarantined, %d files, %.1f s",

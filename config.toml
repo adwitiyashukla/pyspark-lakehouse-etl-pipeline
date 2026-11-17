@@ -1,22 +1,22 @@
 [data]
 root = "data"
 feeds = ["yellow", "green", "fhv", "fhvhv"]
-start_month = "2019-01"
+start_month = "2021-01"
 end_month = "2021-07"
 release_base = "https://github.com/DataTalksClub/nyc-tlc-data/releases/download"
 zone_lookup_url = "https://raw.githubusercontent.com/fivethirtyeight/uber-tlc-foil-response/master/uber-trip-data/taxi-zone-lookup.csv"
 
 [spark]
-master = "local[*]"
+master = "local[4]"
 app_name = "spillway"
-driver_memory = "4g"
-executor_memory = "2g"
+driver_memory = "2g"
+executor_memory = "1g"
 executor_cores = 1
-shuffle_partitions = 48
+shuffle_partitions = 32
 adaptive = true
 adaptive_skew_join = true
 broadcast_threshold_mb = 32
-target_file_mb = 128
+target_file_mb = 64
 timezone = "UTC"
 local_dir = ""
 log_level = "WARN"
@@ -56,7 +56,7 @@ fail_on = "error"
 
 [tuning]
 sample_feed = "yellow"
-sample_months = ["2019-01", "2019-02", "2019-03"]
+sample_months = ["2021-01", "2021-02", "2021-03"]
 skew_feed = "fhvhv"
 skew_months = ["2021-01"]
 experiments = ["gzip_parallelism", "schema_inference", "join_strategy", "skew_salting", "adaptive_execution", "partition_pruning", "file_compaction"]

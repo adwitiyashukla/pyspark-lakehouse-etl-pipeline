@@ -208,9 +208,11 @@ def skew_salting(config: Config, spark: SparkSession, probe: Probe) -> list[Meas
         trips.unpersist()
         return []
     share = counts[0]["trips"] / total
-    dimension = spark.createDataFrame(
-        [(row["hot_key"], f"operator {index}") for index, row in enumerate(counts)],
-        "hot_key string, operator string",
+    dimension = (
+        trips.select("hot_key")
+        .distinct()
+        .withColumn("operator", F.concat(F.lit("operator "), F.col("hot_key")))
+        .cache()
     )
     buckets = config.tuning.salt_buckets
     out = []
@@ -272,6 +274,7 @@ def skew_salting(config: Config, spark: SparkSession, probe: Probe) -> list[Meas
                 "Spark splits the hot partition on its own",
             )
         )
+    dimension.unpersist()
     trips.unpersist()
     return out
 

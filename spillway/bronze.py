@@ -41,7 +41,7 @@ def typed_frame(spark: SparkSession, variant: Variant, paths: list[Path], fmt: s
     source = F.input_file_name()
     projection = []
     for column in variant.columns:
-        expression = F.col(column.name)
+        expression = F.col(column.source)
         if isinstance(column.cast_type, T.TimestampType):
             expression = F.to_timestamp(expression, fmt)
         elif column.cast_type is not None:

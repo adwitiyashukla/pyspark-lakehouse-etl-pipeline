@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 import platform
+import shutil
 import sys
+import time
 from pathlib import Path
 
 from pyspark.sql import SparkSession
@@ -10,6 +12,9 @@ from pyspark.sql import SparkSession
 from .config import Config
 
 SUBMIT_ARGS = "PYSPARK_SUBMIT_ARGS"
+LOCAL_DIR_NAME = "spark-local"
+STALE_SECONDS = 86400
+_RUN_DIRS: dict[int, Path] = {}
 
 
 class SparkStartupError(RuntimeError):
@@ -65,6 +70,24 @@ def settings(config: Config, overrides: dict[str, str] | None = None) -> dict[st
     return values
 
 
+def _sweep(root: Path) -> None:
+    if not root.exists():
+        return
+    cutoff = time.time() - STALE_SECONDS
+    for item in root.iterdir():
+        stamp = item.name.split("-", 1)[0]
+        if stamp.isdigit() and int(stamp) < cutoff:
+            shutil.rmtree(item, ignore_errors=True)
+
+
+def run_dir(config: Config) -> Path:
+    root = config.data.root / LOCAL_DIR_NAME
+    _sweep(root)
+    path = root / f"{int(time.time())}-{os.getpid()}"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def build(
     config: Config,
     app_suffix: str = "",
@@ -76,14 +99,25 @@ def build(
     os.environ.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
     os.environ[SUBMIT_ARGS] = f"--driver-memory {config.spark.driver_memory} pyspark-shell"
     name = config.spark.app_name + (f"-{app_suffix}" if app_suffix else "")
+    overrides = dict(overrides or {})
+    scratch = None
+    if not config.spark.local_dir and "spark.local.dir" not in overrides:
+        scratch = run_dir(config)
+        overrides["spark.local.dir"] = str(scratch)
     builder = SparkSession.builder.appName(name).master(master or config.spark.master)
     for key, value in settings(config, overrides).items():
         builder = builder.config(key, value)
     spark = builder.getOrCreate()
+    if scratch is not None:
+        _RUN_DIRS[id(spark)] = scratch
     spark.sparkContext.setLogLevel(config.spark.log_level)
     return spark
 
 
 def stop(spark: SparkSession | None) -> None:
-    if spark is not None:
-        spark.stop()
+    if spark is None:
+        return
+    spark.stop()
+    scratch = _RUN_DIRS.pop(id(spark), None)
+    if scratch is not None:
+        shutil.rmtree(scratch, ignore_errors=True)

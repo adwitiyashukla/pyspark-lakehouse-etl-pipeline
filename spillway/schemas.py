@@ -27,7 +27,7 @@ class Variant:
         return tuple(column.source for column in self.columns)
 
     def read_schema(self) -> T.StructType:
-        fields = [T.StructField(column.name, column.read_type, True) for column in self.columns]
+        fields = [T.StructField(column.source, column.read_type, True) for column in self.columns]
         fields.append(T.StructField(CORRUPT_COLUMN, T.StringType(), True))
         return T.StructType(fields)
 

@@ -173,7 +173,27 @@ def silver_checks(config: Config, spark: SparkSession) -> list[Check]:
     )
     with state.session(config.data.state_db) as conn:
         bronze_rows = sum(row["rows"] or 0 for row in state.table_rows(conn, "bronze_partition"))
-    quarantined = spark.read.parquet(str(config.data.quarantine / "silver")).count()
+        layers = {row["layer"]: row for row in state.table_rows(conn, "layer_run")}
+    rejected_root = config.data.quarantine / "silver"
+    quarantined = (
+        spark.read.parquet(str(rejected_root)).count()
+        if list(rejected_root.rglob("*.parquet"))
+        else 0
+    )
+    for layer, observed in (("silver", total_rows), ("quarantine", quarantined)):
+        recorded = layers.get(layer)
+        expected = recorded["rows"] if recorded is not None else -1
+        out.append(
+            Check(
+                "silver",
+                f"{layer}_run_completed",
+                "error",
+                float(abs(observed - expected)),
+                0.0,
+                recorded is not None and expected == observed,
+                f"recorded {expected}, found {observed} on disk",
+            )
+        )
     duplicates = bronze_rows - quarantined - total_rows
     out.append(
         Check(

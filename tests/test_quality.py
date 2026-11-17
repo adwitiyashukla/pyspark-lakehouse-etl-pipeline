@@ -46,3 +46,17 @@ def test_reconciliation_accounts_for_every_bronze_row(lake, spark):
     recon = checks["row_reconciliation"]
     assert recon["passed"]
     assert "duplicates" in recon["detail"]
+
+
+def test_a_silver_run_that_died_before_recording_is_blocked(lake, spark):
+    with state.session(lake.data.state_db) as conn:
+        rows = {row["layer"]: dict(row) for row in state.table_rows(conn, "layer_run")}
+        conn.execute("DELETE FROM layer_run WHERE layer = 'quarantine'")
+        conn.commit()
+    try:
+        with pytest.raises(quality.QualityError) as error:
+            quality.run(lake, spark, gate=True)
+        assert "quarantine_run_completed" in str(error.value)
+    finally:
+        with state.session(lake.data.state_db) as conn:
+            state.record_layer(conn, **rows["quarantine"])
