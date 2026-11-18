@@ -4,7 +4,7 @@ import dataclasses
 
 import pytest
 
-from spillway import quality, state
+from lakeetl import quality, state
 
 
 def test_all_checks_pass_on_the_test_lake(lake, spark):

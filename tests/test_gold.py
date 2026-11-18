@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pyspark.sql import functions as F
 
-from spillway import gold, silver
+from lakeetl import gold, silver
 
 
 def test_every_mart_is_written(lake, spark):

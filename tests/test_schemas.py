@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from spillway import schemas
+from lakeetl import schemas
 
 REAL_HEADERS = {
     "yellow_v1": "VendorID,tpep_pickup_datetime,tpep_dropoff_datetime,passenger_count,"

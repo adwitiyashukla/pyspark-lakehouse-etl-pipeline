@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pyspark.sql import functions as F
 
-from spillway import bronze, sources, state
+from lakeetl import bronze, sources, state
 
 
 def test_every_feed_lands_one_partition_per_month(lake, spark):

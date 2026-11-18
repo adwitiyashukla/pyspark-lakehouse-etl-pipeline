@@ -1,10 +1,10 @@
-# spark-batch-and-streaming-etl-pipeline
+# pyspark-lakehouse-etl-pipeline
 
-[![ci](https://github.com/adwitiyashukla/spark-batch-and-streaming-etl-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/adwitiyashukla/spark-batch-and-streaming-etl-pipeline/actions/workflows/ci.yml)
+[![ci](https://github.com/adwitiyashukla/pyspark-lakehouse-etl-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/adwitiyashukla/pyspark-lakehouse-etl-pipeline/actions/workflows/ci.yml)
 
 A PySpark ETL pipeline over the NYC taxi and for-hire trip records. It downloads the monthly gzip files, turns them into Parquet, merges four different trip feeds into one trip table, builds marts, commits them to Iceberg tables, and runs a streaming job with a watermark on the side. I built it to get properly good at Spark, so it also has a tuning lab that runs the same work the slow way and the fast way and records what Spark actually did each time.
 
-The Python package and the CLI are called spillway.
+The Python package and the CLI are called lakeetl.
 
 ## Pipeline
 
@@ -53,7 +53,7 @@ One trick in silver: duplicates always share a pickup time, so they always share
 
 ## Tuning lab
 
-`spillway tune` runs each experiment twice on the same data and records Spark's own stage metrics from its REST API: tasks, bytes read, shuffle bytes, spill and the slowest task. Both versions have to return the same row count or the run fails.
+`lakeetl tune` runs each experiment twice on the same data and records Spark's own stage metrics from its REST API: tasks, bytes read, shuffle bytes, spill and the slowest task. Both versions have to return the same row count or the run fails.
 
 | experiment | rows both sides return | slow side | fast side |
 |---|---|---|---|
@@ -92,17 +92,17 @@ You need Python 3.11 or newer and Java 17 or 21 (Spark 3.5 does not start on Jav
 python -m venv .venv
 .venv\Scripts\activate
 pip install -e .[dev]
-python -m spillway.cli pipeline
+python -m lakeetl.cli pipeline
 ```
 
 `pipeline` runs ingest, bronze, silver, gold, the quality gate and Iceberg. The other commands:
 
 ```
-python -m spillway.cli stream-produce
-python -m spillway.cli stream-run --reset
-python -m spillway.cli tune
-python -m spillway.cli cluster-start --workers 2
-python -m spillway.cli report
+python -m lakeetl.cli stream-produce
+python -m lakeetl.cli stream-run --reset
+python -m lakeetl.cli tune
+python -m lakeetl.cli cluster-start --workers 2
+python -m lakeetl.cli report
 ```
 
 Every setting lives in `config.toml` and is validated when it loads. `config.ci.toml` is a two month slice for CI. Spark's scratch files go to `data/spark-local` instead of the system temp folder, and each run removes its own folder when it stops.

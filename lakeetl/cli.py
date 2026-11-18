@@ -19,11 +19,11 @@ from . import (
 )
 from . import config as config_module
 
-LOG = logging.getLogger("spillway")
+LOG = logging.getLogger("lakeetl")
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="spillway")
+    parser = argparse.ArgumentParser(prog="lakeetl")
     parser.add_argument("--config", default="config.toml")
     parser.add_argument("--log-level", default="INFO")
     parser.add_argument("--master", default="")

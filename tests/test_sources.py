@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from spillway import sources
+from lakeetl import sources
 
 
 def test_month_range_spans_years():
@@ -33,7 +33,7 @@ def test_landing_and_bronze_paths():
 
 
 def test_planned_files_covers_every_feed_and_month():
-    settings = __import__("spillway.config", fromlist=["load"]).load("config.toml")
+    settings = __import__("lakeetl.config", fromlist=["load"]).load("config.toml")
     planned = sources.planned_files(settings)
     months = sources.month_range(settings.data.start_month, settings.data.end_month)
     assert len(planned) == len(settings.data.feeds) * len(months)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pyspark.sql import functions as F
 
-from spillway import silver
+from lakeetl import silver
 
 
 def test_all_four_feeds_reach_one_table(lake, spark):

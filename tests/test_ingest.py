@@ -4,7 +4,7 @@ import gzip
 
 import pytest
 
-from spillway import ingest, schemas, sources
+from lakeetl import ingest, schemas, sources
 
 
 class _Response:

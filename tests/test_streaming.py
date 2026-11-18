@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from spillway import streaming
+from lakeetl import streaming
 
 
 @pytest.fixture(scope="module")

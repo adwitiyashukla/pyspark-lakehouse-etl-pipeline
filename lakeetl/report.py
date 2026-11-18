@@ -25,7 +25,7 @@ def build(config: Config) -> str:
         partitions = state.table_rows(conn, "bronze_partition")
         checks = state.table_rows(conn, "quality_check")
         tuning = state.table_rows(conn, "tuning_result")
-    lines.append("spillway run summary")
+    lines.append("lakeetl run summary")
     lines.append(_line("="))
     lines.append(
         f"source files ready {totals['source_files_ready']}, "

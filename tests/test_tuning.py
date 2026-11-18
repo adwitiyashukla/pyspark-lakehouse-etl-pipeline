@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from spillway import state, tuning
+from lakeetl import state, tuning
 
 
 def test_partition_pruning_variants_agree(lake, spark):

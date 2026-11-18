@@ -8,7 +8,7 @@ zone_lookup_url = "https://raw.githubusercontent.com/fivethirtyeight/uber-tlc-fo
 
 [spark]
 master = "local[2]"
-app_name = "spillway"
+app_name = "lakeetl"
 driver_memory = "3g"
 executor_memory = "2g"
 executor_cores = 1
@@ -74,6 +74,6 @@ late_rows = 4000
 late_offset_hours = 8
 
 [iceberg]
-catalog_name = "spillway"
+catalog_name = "lakeetl"
 namespace = "gold"
 tables = ["od_month", "zone_month", "hourly_demand", "airport_flow", "feed_share", "zone_pair"]

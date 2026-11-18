@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from spillway import metrics
+from lakeetl import metrics
 
 STAGES = [
     {

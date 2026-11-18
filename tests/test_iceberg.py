@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from spillway import iceberg
+from lakeetl import iceberg
 
 
 @pytest.fixture(scope="module")
@@ -36,7 +36,7 @@ def test_schema_evolution_adds_the_column_without_rewriting_data(lake, committed
 
 
 def test_snapshot_totals_match_the_mart(lake, spark, committed):
-    from spillway import gold
+    from lakeetl import gold
 
     rows = gold.read(spark, lake, "zone_month").count()
     assert committed["zone_month"]["latest_snapshot_records"] == rows

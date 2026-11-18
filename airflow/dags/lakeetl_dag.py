@@ -10,9 +10,9 @@ try:
 except ImportError:
     from airflow.operators.bash import BashOperator
 
-HOME = os.environ.get("SPILLWAY_HOME", os.getcwd())
-CONFIG = os.environ.get("SPILLWAY_CONFIG", "config.toml")
-PYTHON = os.environ.get("SPILLWAY_PYTHON", "python")
+HOME = os.environ.get("LAKEETL_HOME", os.getcwd())
+CONFIG = os.environ.get("LAKEETL_CONFIG", "config.toml")
+PYTHON = os.environ.get("LAKEETL_PYTHON", "python")
 STAGES = (
     ("ingest", "ingest"),
     ("bronze", "bronze"),
@@ -26,7 +26,7 @@ STREAM_STAGES = (
     ("stream_run", "stream-run --reset"),
 )
 DEFAULT_ARGS = {
-    "owner": "spillway",
+    "owner": "lakeetl",
     "retries": 1,
     "retry_delay": timedelta(minutes=2),
     "depends_on_past": False,
@@ -34,11 +34,11 @@ DEFAULT_ARGS = {
 
 
 def command(stage: str) -> str:
-    return f"cd {HOME} && {PYTHON} -m spillway.cli --config {CONFIG} {stage}"
+    return f"cd {HOME} && {PYTHON} -m lakeetl.cli --config {CONFIG} {stage}"
 
 
 with DAG(
-    dag_id="spillway_pipeline",
+    dag_id="lakeetl_pipeline",
     description="NYC trip record lakehouse: ingest, bronze, silver, gold, quality, iceberg",
     start_date=datetime(2024, 1, 1),
     schedule=None,

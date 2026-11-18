@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from spillway import config as config_module
+from lakeetl import config as config_module
 
 
 def _write(tmp_path, body: str):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from spillway import state
+from lakeetl import state
 
 
 def test_tables_are_created(tmp_path):

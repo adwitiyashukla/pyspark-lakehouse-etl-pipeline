@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from spillway import bronze, gold, schemas, silver, sources, state
-from spillway import config as config_module
+from lakeetl import bronze, gold, schemas, silver, sources, state
+from lakeetl import config as config_module
 
 CONFIG_TEMPLATE = """
 [data]
@@ -19,7 +19,7 @@ zone_lookup_url = "https://example.invalid/zones.csv"
 
 [spark]
 master = "local[2]"
-app_name = "spillway-test"
+app_name = "lakeetl-test"
 driver_memory = "1g"
 executor_memory = "1g"
 executor_cores = 1
@@ -85,7 +85,7 @@ late_rows = 100
 late_offset_hours = 8
 
 [iceberg]
-catalog_name = "spillway_test"
+catalog_name = "lakeetl_test"
 namespace = "gold"
 tables = ["od_month", "zone_month", "feed_share"]
 """
@@ -166,7 +166,7 @@ def _write_config(root: Path) -> Path:
 
 @pytest.fixture(scope="session")
 def spark(settings):
-    from spillway import session as session_module
+    from lakeetl import session as session_module
 
     built = session_module.build(settings, "tests")
     yield built
@@ -175,7 +175,7 @@ def spark(settings):
 
 @pytest.fixture(scope="session")
 def settings(tmp_path_factory):
-    root = tmp_path_factory.mktemp("spillway")
+    root = tmp_path_factory.mktemp("lakeetl")
     return config_module.load(_write_config(root))
 
 

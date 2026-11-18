@@ -48,27 +48,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
       - name: Ingest
-        run: python -m spillway.cli --config config.ci.toml ingest
+        run: python -m lakeetl.cli --config config.ci.toml ingest
       - name: Bronze
-        run: python -m spillway.cli --config config.ci.toml bronze
+        run: python -m lakeetl.cli --config config.ci.toml bronze
       - name: Silver
-        run: python -m spillway.cli --config config.ci.toml silver
+        run: python -m lakeetl.cli --config config.ci.toml silver
       - name: Gold
-        run: python -m spillway.cli --config config.ci.toml gold
+        run: python -m lakeetl.cli --config config.ci.toml gold
       - name: Quality gate
-        run: python -m spillway.cli --config config.ci.toml quality
+        run: python -m lakeetl.cli --config config.ci.toml quality
       - name: Iceberg
-        run: python -m spillway.cli --config config.ci.toml iceberg
+        run: python -m lakeetl.cli --config config.ci.toml iceberg
       - name: Streaming
         run: |
-          python -m spillway.cli --config config.ci.toml stream-produce
-          python -m spillway.cli --config config.ci.toml stream-run --reset
+          python -m lakeetl.cli --config config.ci.toml stream-produce
+          python -m lakeetl.cli --config config.ci.toml stream-run --reset
       - name: Tuning lab
-        run: python -m spillway.cli --config config.ci.toml tune
+        run: python -m lakeetl.cli --config config.ci.toml tune
       - name: Rerun is a no op
         run: |
-          python -m spillway.cli --config config.ci.toml bronze
-          python -m spillway.cli --config config.ci.toml report
+          python -m lakeetl.cli --config config.ci.toml bronze
+          python -m lakeetl.cli --config config.ci.toml report
       - uses: actions/upload-artifact@v4
         with:
           name: pipeline-report
@@ -99,11 +99,11 @@ jobs:
           export AIRFLOW_HOME="${GITHUB_WORKSPACE}/.airflow"
           export AIRFLOW__CORE__DAGS_FOLDER="${GITHUB_WORKSPACE}/airflow/dags"
           export AIRFLOW__CORE__LOAD_EXAMPLES=False
-          export SPILLWAY_HOME="${GITHUB_WORKSPACE}"
-          export SPILLWAY_CONFIG=config.ci.toml
-          export SPILLWAY_PYTHON="$(which python)"
+          export LAKEETL_HOME="${GITHUB_WORKSPACE}"
+          export LAKEETL_CONFIG=config.ci.toml
+          export LAKEETL_PYTHON="$(which python)"
           .airflow-venv/bin/airflow db migrate
-          .airflow-venv/bin/airflow dags test spillway_pipeline 2024-01-01
+          .airflow-venv/bin/airflow dags test lakeetl_pipeline 2024-01-01
       - uses: actions/upload-artifact@v4
         with:
           name: airflow-report
